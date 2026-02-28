@@ -7,7 +7,7 @@
     "slug": "protein-oatmeal-greek-yogurt-berries",
     "cookingPostLink": "",
     "mealPrepPostLink": "",
-    "imageUrl": "https://images.unsplash.com/photo-1517673400267-0251440c45dc?auto=format&fit=crop&w=400&q=80",
+    "imageUrl": "/meal-prep-1/breakfast1.png",
     "servings": 1,
     "servingUnit": "bowl",
     "ingredients": [
@@ -58,7 +58,7 @@
     "slug": "eggs-egg-whites-parmesan-avocado",
     "cookingPostLink": "",
     "mealPrepPostLink": "",
-    "imageUrl": "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=400&q=80",
+    "imageUrl": "/meal-prep-1/breakfast2.png",
     "servings": 1,
     "servingUnit": "plate",
     "ingredients": [
@@ -110,7 +110,7 @@
     "slug": "lean-beef-bell-pepper-roasted-potatoes",
     "cookingPostLink": "",
     "mealPrepPostLink": "",
-    "imageUrl": "https://images.unsplash.com/photo-1464306076886-ff63fc5de191?auto=format&fit=crop&w=400&q=80",
+    "imageUrl": "/meal-prep-1/lunch1.PNG",
     "servings": 5,
     "servingUnit": "container",
     "ingredients": [
@@ -173,7 +173,7 @@
     "slug": "chicken-tomatoes-bell-pepper",
     "cookingPostLink": "",
     "mealPrepPostLink": "",
-    "imageUrl": "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=400&q=80",
+    "imageUrl": "/meal-prep-1/lunch2.PNG",
     "servings": 5,
     "servingUnit": "container",
     "ingredients": [
@@ -235,7 +235,7 @@
     "slug": "sweet-potato-turkey-kotletes",
     "cookingPostLink": "",
     "mealPrepPostLink": "",
-    "imageUrl": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80",
+    "imageUrl": "/meal-prep-1/dinner.PNG",
     "servings": 5,
     "servingUnit": "container",
     "ingredients": [
