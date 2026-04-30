@@ -1,9 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CaloriesScreen from "./screens/CaloriesScreen";
 import InventoryScreen from "./screens/InventoryScreen";
 import SummaryScreen from "./screens/SummaryScreen";
-import mockedIngredients from "@/mocked/mockedIngredients.json";
 
 export default function MealPrepHelperPageBody() {
   const [macros, setMacros] = useState({ protein: 35, fat: 30, carbs: 35 });
@@ -12,12 +11,19 @@ export default function MealPrepHelperPageBody() {
   const [step, setStep] = useState<'calories' | 'inventory' | 'summary'>('calories');
   const [ingredients, setIngredients] = useState<{ name: string; amount: string; unit: string }[]>([]);
   const [nutritionSummary, setNutritionSummary] = useState<any>(null);
+  const [ingredientDB, setIngredientDB] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/ingredients")
+      .then((res) => res.json())
+      .then((data) => setIngredientDB(Array.isArray(data) ? data : []));
+  }, []);
 
   // Calculate nutrition for all ingredients
   function calculateNutrition() {
     let totalKcal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
     for (const ing of ingredients) {
-      const db = mockedIngredients.find((i: any) => i.name === ing.name);
+      const db = ingredientDB.find((i: any) => i.name === ing.name);
       if (!db) continue;
       const conv = db.unitConversions.find((u: any) => u.unit === ing.unit);
       if (!conv) continue;
@@ -82,6 +88,7 @@ export default function MealPrepHelperPageBody() {
         <InventoryScreen
           ingredients={ingredients}
           setIngredients={setIngredients}
+          ingredientDB={ingredientDB}
           onContinue={handleContinueInventory}
         />
       )}
@@ -94,6 +101,7 @@ export default function MealPrepHelperPageBody() {
           nutritionSummary={nutritionSummary}
           totalGoal={totalGoal}
           isWithinGoal={isWithinGoal}
+          ingredientDB={ingredientDB}
           onBack={() => setStep('inventory')}
           onBackCalories={() => setStep('calories')}
         />

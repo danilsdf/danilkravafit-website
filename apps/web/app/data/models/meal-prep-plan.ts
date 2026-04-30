@@ -1,4 +1,24 @@
+export type MealPlanRecipeEntry = {
+  type: "Breakfast" | "Lunch" | "Dinner" | "Snack";
+  order: number;
+  recipeId: string;
+  recipe?: {
+    _id: string;
+    title: string;
+    slug: string;
+    imageUrl?: string | null;
+    description?: string | null;
+    servings: number;
+    servingUnit?: string;
+    nutritionTotals?: {
+      perServing?: { kcal: number | null; protein: number | null; carbs: number | null; fat: number | null };
+      perRecipe?: { kcal: number | null; protein: number | null; carbs: number | null; fat: number | null };
+    };
+  };
+};
+
 export type MealPrepPlan = {
+  _id?: string;
   id: string;
 
   title: string;
@@ -13,4 +33,5 @@ export type MealPrepPlan = {
   ingredientNames: string[]; // e.g. ["Chicken Breast", "Ground Turkey", ...]
   imageUrl?: string | null;
   isCurrentWeek?: boolean;
+  recipes?: MealPlanRecipeEntry[];
 };

@@ -1,6 +1,4 @@
 import React from "react";
-import mealPlanRecipes from "@/mocked/mockedMealPlanRecipe.json";
-import allRecipes from "@/mocked/mockedRecipes.json";
 import Link from "next/link";
 import { MealPrepPlan } from "@/app/data/models/meal-prep-plan";
 
@@ -23,21 +21,15 @@ const MealPlanDetailBody: React.FC<MealPlanDetailBodyProps> = ({
 }) => {
     const dateRange = `${formatDate(plan.startDate)} – ${formatDate(plan.endDate)}`;
 
-    // Find all recipe connections for this plan
-    const planRecipes = (mealPlanRecipes as any[])
-        .filter((x) => x.mealPrepId === plan.id)
-        .sort((a, b) => a.order - b.order);
+    const planRecipes = (plan.recipes ?? []).slice().sort((a, b) => a.order - b.order);
 
     // Group recipes by type
     const mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
 
-    const recipesByType: Record<string, any[]> = {};
+    const recipesByType: Record<string, typeof planRecipes> = {};
     mealTypes.forEach((type) => {
         recipesByType[type] = planRecipes.filter((x) => x.type === type);
     });
-
-    // Helper to get recipe details by _id
-    const getRecipe = (id: string) => (allRecipes as any[]).find((r) => r._id === id);
 
     return (
         <main className="min-h-dvh from-slate-100 via-slate-100 to-slate-200 pt-16">
@@ -109,7 +101,7 @@ const MealPlanDetailBody: React.FC<MealPlanDetailBodyProps> = ({
                                 </div>
                                 <div className="space-y-3">
                                     {recipesByType[type].map((conn) => {
-                                        const recipe = getRecipe(conn.recipeId);
+                                        const recipe = conn.recipe;
                                         if (!recipe) return null;
                                         return (
                                             <Link
@@ -133,18 +125,18 @@ const MealPlanDetailBody: React.FC<MealPlanDetailBodyProps> = ({
                                                     </span>
                                                     
                                                     {/* Macro preview per serving */}
-                                                    {recipe.nutritionTotals.perServing && (
+                                                    {recipe.nutritionTotals?.perServing && (
                                                         <div className="flex flex-wrap items-center gap-2">
-                                                            {recipe.nutritionTotals.perServing.calories !== undefined && (
-                                                                <span className="text-xs text-sky-600 dark:text-sky-300 mt-1">{recipe.nutritionTotals.perServing.calories} kcal</span>
+                                                            {recipe.nutritionTotals.perServing.kcal != null && (
+                                                                <span className="text-xs text-sky-600 dark:text-sky-300 mt-1">{recipe.nutritionTotals.perServing.kcal} kcal</span>
                                                             )}
-                                                            {recipe.nutritionTotals.perServing.protein !== undefined && (
+                                                            {recipe.nutritionTotals.perServing.protein != null && (
                                                                 <span className="text-xs text-blue-600 dark:text-blue-200 mt-1">P {recipe.nutritionTotals.perServing.protein}g</span>
                                                             )}
-                                                            {recipe.nutritionTotals.perServing.fat !== undefined && (
+                                                            {recipe.nutritionTotals.perServing.fat != null && (
                                                                 <span className="text-xs text-purple-600 dark:text-purple-200 mt-1">F {recipe.nutritionTotals.perServing.fat}g</span>
                                                             )}
-                                                            {recipe.nutritionTotals.perServing.carbs !== undefined && (
+                                                            {recipe.nutritionTotals.perServing.carbs != null && (
                                                                 <span className="text-xs text-amber-600 dark:text-amber-200 mt-1">C {recipe.nutritionTotals.perServing.carbs}g</span>
                                                             )}
                                                         </div>

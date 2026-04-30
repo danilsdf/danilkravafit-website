@@ -1,5 +1,4 @@
 import React from "react";
-import mockedIngredients from "@/mocked/mockedIngredients.json";
 import NutritionDashboardCard from "@/components/MealPrepHelper/NutritionDashboardCard";
 
 interface SummaryScreenProps {
@@ -10,6 +9,7 @@ interface SummaryScreenProps {
 	nutritionSummary: { totalKcal: number; totalProtein: number; totalCarbs: number; totalFat: number };
 	totalGoal: { kcal: number; protein: number; fat: number; carbs: number };
 	isWithinGoal: (actual: number, goal: number) => boolean;
+	ingredientDB: any[];
 	onBack: () => void;
 	onBackCalories: () => void;
 }
@@ -22,11 +22,12 @@ const SummaryScreen: React.FC<SummaryScreenProps> = ({
 	nutritionSummary,
 	totalGoal,
 	isWithinGoal,
+	ingredientDB,
 	onBack,
     onBackCalories,
 }) => {
 	function getIngredientNutrition(ing: { name: string; unit: string; amount: string }) {
-		const db = (mockedIngredients as any[]).find(i => i.name === ing.name);
+		const db = (ingredientDB as any[]).find(i => i.name === ing.name);
 		if (!db) return null;
 		const conv = db.unitConversions.find((u: any) => u.unit === ing.unit);
 		if (!conv) return null;

@@ -1,14 +1,14 @@
 /* Custom scrollbar styling for Chrome, Edge, and Safari */
 html {
-  --scrollbar-bg: #181c20;
-  --scrollbar-thumb: #23272e;
-  --scrollbar-thumb-hover: #374151;
-}
-
-html.dark {
   --scrollbar-bg: #e5e7eb;
   --scrollbar-thumb: #bdbdbd;
   --scrollbar-thumb-hover: #a3a3a3;
+}
+
+html.dark {
+  --scrollbar-bg: #181c20;
+  --scrollbar-thumb: #23272e;
+  --scrollbar-thumb-hover: #374151;
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -24,14 +24,14 @@ input[type="number"] {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
   background: var(--scrollbar-bg);
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 8px;
-  transition: background 0.2s;
+  border-radius: 999px;
+  border: 2px solid var(--scrollbar-bg);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -40,6 +40,33 @@ input[type="number"] {
 
 ::-webkit-scrollbar-corner {
   background: var(--scrollbar-bg);
+}
+
+/* Thin scrollbar for modal ingredient list */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 999px;
+  border: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}
+
+html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #404040;
+}
+
+html.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #525252;
 }
 @import "tailwindcss";
 

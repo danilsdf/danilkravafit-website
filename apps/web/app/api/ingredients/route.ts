@@ -4,8 +4,8 @@ import { getDb } from "@/lib/mongodb";
 export async function GET() {
   try {
     const db = await getDb();
-    const recipes = await db.collection("Recipes").find({}).toArray();
-    return NextResponse.json(recipes);
+    const ingredients = await db.collection("Ingredients").find({}).toArray();
+    return NextResponse.json(ingredients);
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

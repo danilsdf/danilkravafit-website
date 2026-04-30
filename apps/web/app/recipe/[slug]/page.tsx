@@ -1,54 +1,28 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { RecipeDetailBody } from "@/components/pages/RecipeDetailBody";
-import type { Recipe, RecipeIngredientLinePopulated } from "@/app/data/models/recipe";
-import mockedRecipes from "@/mocked/mockedRecipes.json";
-import mockedRecipes2 from "@/mocked/mockedRecipes2.json";
-import mockedIngredients from "@/mocked/mockedIngredients.json";
-
-const allRawRecipes = [...mockedRecipes, ...mockedRecipes2];
-
-// Build a lookup map: ingredient _id -> ingredient object
-const ingredientMap = new Map(
-  mockedIngredients.map((ing) => [String(ing._id), ing])
-);
-
-// Populate ingredient references for a raw recipe JSON
-function populateRecipe(raw: (typeof allRawRecipes)[number]): Recipe {
-  const ingredients: RecipeIngredientLinePopulated[] = raw.ingredients.map((line) => {
-    const ingredient = ingredientMap.get(String(line.ingredientId));
-    return {
-      quantity: line.quantity,
-      unit: line.unit,
-      grams: line.grams ?? null,
-      note: line.note ?? null,
-      ingredient: ingredient as any,
-    };
-  });
-
-  return {
-    ...raw,
-    _id: raw._id as any,
-    ingredients,
-    mealPrep: raw.mealPrep ?? undefined,
-    status: raw.status as any,
-    createdAt: new Date(raw.createdAt),
-    updatedAt: new Date(raw.updatedAt),
-  } as Recipe;
-}
+import type { Recipe } from "@/app/data/models/recipe";
 
 export default function RecipePage() {
   const params = useParams();
   const router = useRouter();
   const slug = typeof params.slug === "string" ? params.slug : Array.isArray(params.slug) ? params.slug[0] : "";
 
-  const recipe = useMemo(() => {
-    const raw = allRawRecipes.find((r) => r.slug === slug);
-    return raw ? populateRecipe(raw) : null;
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`/api/recipes/${slug}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setRecipe(data ?? null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [slug]);
-  
-  // Custom back handler: go back if possible, else go to /recipes
+
   const handleBack = () => {
     if (window.history.length > 1) {
       router.back();
@@ -56,6 +30,10 @@ export default function RecipePage() {
       router.push("/recipes");
     }
   };
+
+  if (loading) {
+    return <div className="text-center py-10 text-neutral-400">Loading...</div>;
+  }
 
   if (!recipe) {
     return <div className="text-center py-10 text-red-500">Recipe not found.</div>;

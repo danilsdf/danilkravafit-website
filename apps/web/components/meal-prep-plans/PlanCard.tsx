@@ -1,6 +1,5 @@
 import { MealPrepPlan } from "@/app/data/models/meal-prep-plan";
 import { useRouter } from "next/navigation";
-import mealPlanRecipes from "@/mocked/mockedMealPlanRecipe.json";
 
 function formatRange(startISO: string, endISO: string) {
   const start = new Date(startISO);
@@ -13,8 +12,7 @@ export default function PlanCard({ plan }: { plan: MealPrepPlan }) {
   const router = useRouter();
   const range = formatRange(plan.startDate, plan.endDate);
 
-  const planRecipes = (mealPlanRecipes as any[])
-      .filter((x) => x.mealPrepId === plan.id);
+  const recipeCount = plan.recipes?.length ?? 0;
 
   const preview = plan.ingredientNames.slice(0, 2).join(", ");
   const hasMore = plan.ingredientNames.length > 2;
@@ -60,7 +58,7 @@ export default function PlanCard({ plan }: { plan: MealPrepPlan }) {
           <h2 className="text-[20px] font-semibold text-slate-800 dark:text-[#E5E7EB] sm:truncate">
             {plan.title}
           </h2>
-          <span className="text-slate-500 dark:text-[#9CA3AF]">{planRecipes.length} {planRecipes.length === 1 ? "meal" : "meals"}</span>
+          <span className="text-slate-500 dark:text-[#9CA3AF]">{recipeCount} {recipeCount === 1 ? "meal" : "meals"}</span>
         </div>
 
         {/* Macro pills (small) */}

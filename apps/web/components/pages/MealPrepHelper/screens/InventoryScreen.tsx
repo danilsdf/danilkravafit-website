@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 interface Ingredient {
 	name: string;
@@ -9,20 +9,15 @@ interface Ingredient {
 interface InventoryScreenProps {
 	ingredients: Ingredient[];
 	setIngredients: React.Dispatch<React.SetStateAction<Ingredient[]>>;
+	ingredientDB: any[];
 	onContinue: () => void;
 }
-export default function InventoryScreen({ ingredients, setIngredients, onContinue }: InventoryScreenProps) {
+export default function InventoryScreen({ ingredients, setIngredients, ingredientDB, onContinue }: InventoryScreenProps) {
 	const [showModal, setShowModal] = useState(false);
 	const [search, setSearch] = useState("");
 	const [selectedIngredient, setSelectedIngredient] = useState<string | null>(null);
 	const [unit, setUnit] = useState("");
 	const [amount, setAmount] = useState("");
-
-	// Load ingredient database from JSON
-	const [ingredientDB, setIngredientDB] = useState<any[]>([]);
-	useEffect(() => {
-		import("@/mocked/mockedIngredients.json").then(mod => setIngredientDB(mod.default));
-	}, []);
 
 	const filteredIngredients = ingredientDB.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
 	const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -76,59 +71,115 @@ export default function InventoryScreen({ ingredients, setIngredients, onContinu
 			</section>
 			{/* Modal Popup */}
 			{showModal && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-					<div className="bg-white dark:bg-neutral-900 rounded-lg p-6 w-full max-w-md shadow-lg">
-						<h3 className="text-lg font-bold mb-2 text-center">Add Ingredient</h3>
-						{!selectedIngredient ? (
-							<>
+				<div
+					className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+					onClick={() => { setShowModal(false); deselectIngredient(); }}
+				>
+				{/* Sheet */}
+				<div
+					className="
+						relative w-full sm:max-w-md
+						bg-white dark:bg-neutral-900
+						rounded-t-3xl sm:rounded-2xl
+						shadow-2xl
+						p-6 pb-8
+						flex flex-col gap-5
+					"
+					onClick={e => e.stopPropagation()}
+				>
+					{/* Close button */}
+					<button
+						className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition"
+						onClick={() => { setShowModal(false); deselectIngredient(); }}
+						aria-label="Close"
+					>
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+							<path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+						</svg>
+					</button>
+
+					{!selectedIngredient ? (
+						<>
+							<div>
+								<h3 className="text-base font-bold text-neutral-900 dark:text-white">Add Ingredient</h3>
+								<p className="text-xs text-neutral-400 mt-0.5">Search and select from your ingredient list</p>
+							</div>
+
+							{/* Search */}
+							<div className="relative">
+								<svg className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" width="16" height="16" viewBox="0 0 20 20" fill="none">
+									<circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="2"/>
+									<path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+								</svg>
 								<input
 									type="text"
-									placeholder="Search ingredient..."
+									placeholder="Search ingredients…"
 									value={search}
 									onChange={e => setSearch(e.target.value)}
-									className="w-full mb-2 rounded border px-2 py-1 bg-neutral-50 dark:bg-neutral-800"
+									className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
 									style={{ fontSize: 16 }}
 									autoFocus
 								/>
-								<ul className="max-h-40 overflow-y-auto mb-2">
-									{filteredIngredients.length === 0 && (
-										<li className="text-sm text-neutral-500 px-2 py-1">No results</li>
-									)}
-									{filteredIngredients.map(i => (
+							</div>
+
+							{/* Results */}
+							<ul className="max-h-56 overflow-y-auto -mx-1 divide-y divide-neutral-100 dark:divide-neutral-800 scrollbar-thin">
+								{filteredIngredients.length === 0 ? (
+									<li className="py-6 text-center text-sm text-neutral-400">No ingredients found</li>
+								) : (
+									filteredIngredients.map(i => (
 										<li
 											key={i.name}
-											className="cursor-pointer px-2 py-1 hover:bg-yellow-100 dark:hover:bg-yellow-900 rounded"
+											className="flex items-center justify-between px-2 py-2.5 rounded-lg cursor-pointer hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition group"
 											onClick={() => selectIngredient(i)}
 										>
-											{i.name}
+											<span className="text-sm text-neutral-800 dark:text-neutral-100 group-hover:text-yellow-700 dark:group-hover:text-yellow-300 transition">{i.name}</span>
+											<svg className="text-neutral-300 group-hover:text-yellow-500 transition" width="14" height="14" viewBox="0 0 16 16" fill="none">
+												<path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+											</svg>
 										</li>
-									))}
-								</ul>
-								<button
-									className="mt-2 text-xs text-neutral-500 underline"
-									onClick={() => {setShowModal(false); deselectIngredient();}}
-								>Cancel</button>
-							</>
-						) : (
-							<>
-								<div className="mb-2">
-									<span className="font-semibold">{selectedIngredient}</span>
-									<button className="ml-2 text-xs text-yellow-600 underline" onClick={deselectIngredient}>Change</button>
+									))
+								)}
+							</ul>
+						</>
+					) : (
+						<>
+							<div>
+								<h3 className="text-base font-bold text-neutral-900 dark:text-white">Set Amount</h3>
+								{/* Selected ingredient pill */}
+								<div className="mt-2 inline-flex items-center gap-2 rounded-full bg-yellow-100 dark:bg-yellow-900/40 px-3 py-1">
+									<span className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">{selectedIngredient}</span>
+									<button
+										className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-200 transition"
+										onClick={deselectIngredient}
+										aria-label="Change ingredient"
+									>
+										<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+											<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+										</svg>
+									</button>
 								</div>
-								<div className="mb-2">
-									<label className="text-sm mr-2">Amount:</label>
+							</div>
+
+							{/* Amount + unit row */}
+							<div className="flex gap-3">
+								<div className="flex-1 flex flex-col gap-1">
+									<label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Amount</label>
 									<input
 										type="number"
 										min="0"
 										value={amount}
 										onChange={e => setAmount(e.target.value)}
-										className="rounded border px-2 py-1 bg-neutral-50 dark:bg-neutral-800 w-26"
+										className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2.5 text-sm font-semibold text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
 										style={{ fontSize: 16 }}
 									/>
+								</div>
+								<div className="flex-1 flex flex-col gap-1">
+									<label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Unit</label>
 									<select
 										value={unit}
 										onChange={e => setUnit(e.target.value)}
-										className="rounded border px-2 py-1 bg-neutral-50 dark:bg-neutral-800 mx-2"
+										className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2.5 text-sm font-semibold text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
 										style={{ fontSize: 16 }}
 									>
 										<option value="">Select unit</option>
@@ -137,25 +188,28 @@ export default function InventoryScreen({ ingredients, setIngredients, onContinu
 										))}
 									</select>
 								</div>
-								<div className="flex gap-2 mt-4 justify-center">
-									<button
-										className="rounded bg-neutral-200 dark:bg-neutral-700 px-4 py-1 text-xs font-semibold text-neutral-800 dark:text-neutral-200"
-										onClick={() => {setShowModal(false); deselectIngredient();}}
-									>
-                                        Cancel
-                                    </button>
-									<button
-										className="rounded bg-yellow-600 dark:bg-yellow-400 px-4 py-1 text-xs font-semibold text-white dark:text-black hover:bg-yellow-700 dark:hover:bg-yellow-300"
-										onClick={handleModalAdd}
-										disabled={!unit || !amount}
-									>
-                                        Add
-                                    </button>
-								</div>
-							</>
-						)}
-					</div>
+							</div>
+
+							{/* Actions */}
+							<div className="flex gap-3 pt-1">
+								<button
+									className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 py-2.5 text-sm font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+									onClick={() => { setShowModal(false); deselectIngredient(); }}
+								>
+									Cancel
+								</button>
+								<button
+									className="flex-1 rounded-xl bg-yellow-500 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-yellow-600 active:scale-95 transition disabled:opacity-40 disabled:pointer-events-none"
+									onClick={handleModalAdd}
+									disabled={!unit || !amount}
+								>
+									Add
+								</button>
+							</div>
+						</>
+					)}
 				</div>
+			</div>
 			)}
 			<section className="mb-4">
 				<div className="overflow-x-auto w-full">

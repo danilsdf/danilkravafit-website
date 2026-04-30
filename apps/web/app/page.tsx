@@ -11,17 +11,17 @@ const records = [
 
 const pillars = [
   {
-    icon: "🏋️",
+    icon: "/icons/dumbbell.png",
     title: "Strength Training",
     text: "Building a strong, resilient foundation.",
   },
   {
-    icon: "🏃",
+    icon: "/icons/running.png",
     title: "Running",
     text: "Improving efficiency, endurance and speed.",
   },
   {
-    icon: "📅",
+    icon: "/icons/calendar.png",
     title: "Consistency",
     text: "Discipline today, results tomorrow.",
   },
@@ -148,7 +148,7 @@ export default function HomePage() {
               { href: "https://www.instagram.com/danilkravafit/reel/DT-3n1RifCo/", src: "/home-page/results/routines.jpg", alt: "Routines", label: "Routines" },
               { href: "https://www.instagram.com/danilkravafit/reel/DUG3iIbCXzv/", src: "/home-page/results/tips.jpg", alt: "Tips", label: "Tips" },
               { href: "https://www.instagram.com/danilkravafit/reel/DSa9uYSifqg/", src: "/home-page/results/nutritions.jpg", alt: "Nutritions", label: "Nutritions" },
-              { href: "https://www.instagram.com/danilkravafit/reel/DUTYVuVkczg/", src: "/home-page/results/progress.png", alt: "Progress", label: "Progress" },
+              { href: "https://www.instagram.com/danilkravafit/reel/DVoV-iuxZrn/", src: "/home-page/results/progress.png", alt: "Progress", label: "Progress" },
             ].map((item) => (
               <a
                 key={item.label}
@@ -186,9 +186,9 @@ export default function HomePage() {
         <section className="border-t border-white/10 px-5 py-10 md:px-10 lg:px-24">
           <div className="grid gap-7 md:grid-cols-3">
             {pillars.map((pillar) => (
-              <article key={pillar.title} className="flex items-start gap-5">
-                <div className="text-3xl opacity-60 md:text-4xl">
-                  {pillar.icon}
+              <article key={pillar.title} className="flex items-center gap-5">
+                <div className="w-12 h-12 md:w-20 md:h-20 opacity-60 flex-shrink-0">
+                  <img src={pillar.icon} alt={pillar.title} className="w-full h-full object-contain" />
                 </div>
 
                 <div>
