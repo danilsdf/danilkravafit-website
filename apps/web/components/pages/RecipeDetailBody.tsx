@@ -6,6 +6,88 @@ import { useRouter } from "next/navigation";
 import type { Recipe } from "@/app/data/models/recipe";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
+// ── Macro adjustment helpers ────────────────────────────────────────────────
+type PrimaryMacro = "protein" | "carbs" | "fat";
+
+type AdjustedIngredient = {
+  name: string;
+  originalGrams: number;
+  newGrams: number;
+  primaryMacro: PrimaryMacro;
+};
+
+function getIngredientGrams(line: {
+  quantity: number | null;
+  unit: string;
+  grams?: number | null;
+}): number | null {
+  if (line.grams != null) return line.grams;
+  if (line.unit === "g" && line.quantity != null) return line.quantity;
+  return null;
+}
+
+function getPrimaryMacro(ing: {
+  proteinPer1g: number;
+  carbsPer1g: number;
+  fatPer1g: number;
+}): PrimaryMacro {
+  const pCal = ing.proteinPer1g * 4;
+  const cCal = ing.carbsPer1g * 4;
+  const fCal = ing.fatPer1g * 9;
+  if (pCal >= cCal && pCal >= fCal) return "protein";
+  if (cCal >= fCal) return "carbs";
+  return "fat";
+}
+
+function computeAdjustedIngredients(
+  recipe: Recipe,
+  targetCalPerServing: number,
+  split: { protein: number; carbs: number; fat: number },
+): AdjustedIngredient[] {
+  const servings = recipe.servings || 1;
+  const tProtein = (targetCalPerServing * split.protein) / 100 / 4;
+  const tCarbs = (targetCalPerServing * split.carbs) / 100 / 4;
+  const tFat = (targetCalPerServing * split.fat) / 100 / 9;
+
+  const groups: Record<PrimaryMacro, { baseMacroG: number }> = {
+    protein: { baseMacroG: 0 },
+    carbs: { baseMacroG: 0 },
+    fat: { baseMacroG: 0 },
+  };
+
+  const lines = recipe.ingredients.map((line) => {
+    const rawGrams = getIngredientGrams(line);
+    const gramsPerServing = rawGrams != null ? rawGrams / servings : null;
+    const primary = getPrimaryMacro(line.ingredient);
+    if (gramsPerServing != null) {
+      const macroPerGram =
+        primary === "protein"
+          ? line.ingredient.proteinPer1g
+          : primary === "carbs"
+            ? line.ingredient.carbsPer1g
+            : line.ingredient.fatPer1g;
+      groups[primary].baseMacroG += gramsPerServing * macroPerGram;
+    }
+    return { line, gramsPerServing, primary };
+  });
+
+  const scales: Record<PrimaryMacro, number> = {
+    protein: groups.protein.baseMacroG > 0 ? tProtein / groups.protein.baseMacroG : 1,
+    carbs: groups.carbs.baseMacroG > 0 ? tCarbs / groups.carbs.baseMacroG : 1,
+    fat: groups.fat.baseMacroG > 0 ? tFat / groups.fat.baseMacroG : 1,
+  };
+
+  return lines
+    .filter(({ gramsPerServing }) => gramsPerServing != null)
+    .map(({ line, gramsPerServing, primary }) => ({
+      name: line.ingredient.name,
+      originalGrams: Math.round((gramsPerServing as number) * 10) / 10,
+      newGrams: Math.round((gramsPerServing as number) * scales[primary] * 10) / 10,
+      primaryMacro: primary,
+    }));
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 type RecipeDetailBodyProps = {
   recipe: Recipe | null;
   onBack: () => void;
@@ -16,9 +98,10 @@ export function RecipeDetailBody({ recipe, onBack }: RecipeDetailBodyProps) {
   const { user, loading: userLoading } = useCurrentUser();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-  // modal: null = closed | "ask" = "adjust calories?" | "adjust" = calories input
+  // modal: null = closed | "ask" = prompt | "adjust" = calories+macros editor
   const [modal, setModal] = useState<null | "ask" | "adjust">(null);
   const [targetCalories, setTargetCalories] = useState("");
+  const [macroSplit, setMacroSplit] = useState({ protein: 30, carbs: 40, fat: 30 });
 
   useEffect(() => {
     if (userLoading || !user || !recipe) return;
@@ -27,18 +110,22 @@ export function RecipeDetailBody({ recipe, onBack }: RecipeDetailBodyProps) {
       .then((data) => {
         setSaved(!!data?.saved);
         if (data?.targetCalories) setTargetCalories(String(data.targetCalories));
+        if (data?.targetMacroSplit) setMacroSplit(data.targetMacroSplit);
       })
       .catch(() => {});
   }, [user, userLoading, recipe?.slug]);
 
-  async function doSave(calories: number | null) {
+  async function doSave(
+    calories: number | null,
+    split: { protein: number; fat: number; carbs: number } | null = null,
+  ) {
     if (!recipe) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/recipes/${recipe.slug}/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetCalories: calories }),
+        body: JSON.stringify({ targetCalories: calories, targetMacroSplit: split }),
       });
       if (res.ok) setSaved(true);
     } finally {
@@ -58,6 +145,20 @@ export function RecipeDetailBody({ recipe, onBack }: RecipeDetailBodyProps) {
     }
   }
 
+  function handleMacroChange(macro: PrimaryMacro, newVal: number) {
+    setMacroSplit((prev) => {
+      const others = (["protein", "carbs", "fat"] as const).filter((k) => k !== macro);
+      const remaining = 100 - newVal;
+      const currentSum = prev[others[0]] + prev[others[1]];
+      if (currentSum === 0) {
+        const half = Math.floor(remaining / 2);
+        return { ...prev, [macro]: newVal, [others[0]]: half, [others[1]]: remaining - half };
+      }
+      const a = Math.round((prev[others[0]] / currentSum) * remaining);
+      return { ...prev, [macro]: newVal, [others[0]]: a, [others[1]]: remaining - a };
+    });
+  }
+
   function handleSaveClick() {
     if (!user) {
       router.push(`/login?redirect=/recipe/${recipe?.slug}`);
@@ -66,6 +167,20 @@ export function RecipeDetailBody({ recipe, onBack }: RecipeDetailBodyProps) {
     if (saved) {
       handleUnsave();
       return;
+    }
+    const nutrition = recipe?.nutritionTotals?.perServing ?? recipe?.nutritionTotals?.perRecipe ?? null;
+    if (nutrition && !saved) {
+      const { kcal, protein, carbs, fat } = nutrition;
+      if (kcal && kcal > 0) setTargetCalories(String(Math.round(kcal)));
+      const pCal = (protein ?? 0) * 4;
+      const cCal = (carbs ?? 0) * 4;
+      const fCal = (fat ?? 0) * 9;
+      const total = pCal + cCal + fCal;
+      if (total > 0) {
+        const p = Math.round((pCal / total) * 100);
+        const c = Math.round((cCal / total) * 100);
+        setMacroSplit({ protein: p, carbs: c, fat: 100 - p - c });
+      }
     }
     setModal("ask");
   }
@@ -77,6 +192,12 @@ export function RecipeDetailBody({ recipe, onBack }: RecipeDetailBodyProps) {
       </div>
     );
   }
+
+  const targetCalNum = Number.parseFloat(targetCalories);
+  const adjustedIngredients =
+    !Number.isNaN(targetCalNum) && targetCalNum > 0
+      ? computeAdjustedIngredients(recipe, targetCalNum, macroSplit)
+      : [];
 
   // Nutrition
   const macros = recipe.nutritionTotals?.perServing || recipe.nutritionTotals?.perRecipe || null;
@@ -132,12 +253,12 @@ export function RecipeDetailBody({ recipe, onBack }: RecipeDetailBodyProps) {
           <dialog
             open
             aria-modal
-            className="relative z-10 w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#171c25]"
+            className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#171c25] max-h-[85vh] overflow-y-auto"
           >
             {modal === "ask" && (
               <>
                 <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">Save recipe</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Do you want to adjust calories for this recipe?</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Do you want to adjust calories and macros? Ingredient weights will be scaled automatically.</p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setModal("adjust")}
@@ -157,21 +278,116 @@ export function RecipeDetailBody({ recipe, onBack }: RecipeDetailBodyProps) {
             )}
             {modal === "adjust" && (
               <>
-                <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mb-2">Adjust calories</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Enter your target calories per serving for this recipe.</p>
+                <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mb-1">Adjust calories & macros</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">Ingredient weights will be scaled to hit your targets.</p>
+
+                {/* Target calories */}
+                <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
+                  Target calories per serving
+                </label>
                 <input
                   type="number"
                   min={1}
                   placeholder="e.g. 450"
                   value={targetCalories}
                   onChange={(e) => setTargetCalories(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1f2937] px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400 mb-5"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1f2937] px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400 mb-6"
                 />
+
+                {/* Macro split sliders */}
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">Macro split</p>
+                <div className="space-y-4 mb-2">
+                  {(["protein", "carbs", "fat"] as const).map((macro) => {
+                    const pct = macroSplit[macro];
+                    const calNum = Number.parseFloat(targetCalories);
+                    const grams =
+                      !Number.isNaN(calNum) && calNum > 0
+                        ? macro === "fat"
+                          ? Math.round((calNum * pct) / 100 / 9)
+                          : Math.round((calNum * pct) / 100 / 4)
+                        : null;
+                    const styles: Record<string, { accent: string; label: string }> = {
+                      protein: { accent: "accent-blue-500", label: "text-blue-600 dark:text-blue-400" },
+                      carbs: { accent: "accent-amber-500", label: "text-amber-600 dark:text-amber-400" },
+                      fat: { accent: "accent-purple-500", label: "text-purple-600 dark:text-purple-400" },
+                    };
+                    return (
+                      <div key={macro}>
+                        <div className="flex justify-between mb-1">
+                          <span className={`text-xs font-bold capitalize ${styles[macro].label}`}>{macro}</span>
+                          <span className="text-xs text-slate-400">
+                            {pct}%{grams != null ? ` · ${grams}g` : ""}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={5}
+                          max={90}
+                          value={pct}
+                          onChange={(e) => handleMacroChange(macro, Number(e.target.value))}
+                          className={`w-full h-1.5 rounded-full cursor-pointer ${styles[macro].accent}`}
+                        />
+                      </div>
+                    );
+                  })}
+                  <div className="flex justify-end">
+                    <span
+                      className={`text-xs font-semibold ${
+                        macroSplit.protein + macroSplit.carbs + macroSplit.fat === 100
+                          ? "text-green-500"
+                          : "text-red-400"
+                      }`}
+                    >
+                      Total: {macroSplit.protein + macroSplit.carbs + macroSplit.fat}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live ingredient weight preview */}
+                {adjustedIngredients.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                      Ingredient weights per serving
+                    </p>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {adjustedIngredients.map((item) => {
+                        const diff = Math.round((item.newGrams - item.originalGrams) * 10) / 10;
+                        const macroLabel: Record<string, string> = {
+                          protein: "text-blue-600 dark:text-blue-400",
+                          carbs: "text-amber-600 dark:text-amber-400",
+                          fat: "text-purple-600 dark:text-purple-400",
+                        };
+                        return (
+                          <div
+                            key={item.name}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5"
+                          >
+                            <span className={`text-xs font-medium truncate ${macroLabel[item.primaryMacro]}`}>
+                              {item.name}
+                            </span>
+                            <span className="text-xs text-slate-400 shrink-0">
+                              {item.originalGrams}g{" →"}{" "}
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                {item.newGrams}g
+                              </span>
+                              {diff !== 0 && (
+                                <span className={diff > 0 ? " text-green-500" : " text-red-400"}>
+                                  {" "}{diff > 0 ? "+" : ""}{diff}g
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
                       const cal = Number.parseFloat(targetCalories);
-                      doSave(!Number.isNaN(cal) && cal > 0 ? cal : null);
+                      doSave(!Number.isNaN(cal) && cal > 0 ? cal : null, macroSplit);
                     }}
                     disabled={saving}
                     className="flex-1 rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600 transition disabled:opacity-60"

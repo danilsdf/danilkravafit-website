@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getAdminPayload, adminUnauthorized } from "@/lib/adminAuth";
+import { computeNutritionTotals } from "@/lib/computeNutrition";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,11 +14,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { _id, createdAt, ...update } = body;
     const db = await getDb();
+
+    const ingredients = Array.isArray(update.ingredients) ? update.ingredients : [];
+    const servings = Number(update.servings) || 1;
+    const nutritionTotals = await computeNutritionTotals(db, ingredients, servings);
+
     await db
       .collection("Recipes")
       .updateOne(
         { _id: new ObjectId(id) },
-        { $set: { ...update, updatedAt: new Date() } }
+        { $set: { ...update, nutritionTotals, updatedAt: new Date() } }
       );
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -1,21 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import type { MealPrepPlan, MealPlanRecipeEntry } from "@/app/data/models/meal-prep-plan";
 
-type MealPrepPlan = {
-  _id: string;
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  imageUrl?: string | null;
-  ingredientNames?: string[];
-  isCurrentWeek?: boolean;
-  isActive?: boolean;
+type RecipeOption = { _id: string; title: string };
+
+type RecipeFormEntry = {
+  type: MealPlanRecipeEntry["type"];
+  order: number;
+  recipeId: string;
 };
 
 type FormState = {
@@ -31,6 +24,7 @@ type FormState = {
   ingredientNames: string;
   isCurrentWeek: boolean;
   isActive: boolean;
+  recipes: RecipeFormEntry[];
 };
 
 const defaultForm = (): FormState => ({
@@ -46,6 +40,7 @@ const defaultForm = (): FormState => ({
   ingredientNames: "",
   isCurrentWeek: false,
   isActive: true,
+  recipes: [],
 });
 
 function slugify(value: string) {
@@ -99,6 +94,8 @@ export default function MealPrepPlansManager() {
   const [formError, setFormError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [availableRecipes, setAvailableRecipes] = useState<RecipeOption[]>([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,8 +109,46 @@ export default function MealPrepPlansManager() {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadRecipes = useCallback(async () => {
+    if (availableRecipes.length > 0) return;
+    setLoadingRecipes(true);
+    try {
+      const res = await fetch("/api/admin/recipes");
+      const data: Array<{ _id: string; title: string }> = await res.json();
+      setAvailableRecipes(data.map((r) => ({ _id: r._id, title: r.title })));
+    } finally {
+      setLoadingRecipes(false);
+    }
+  }, [availableRecipes.length]);
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function addRecipeEntry() {
+    const nextOrder =
+      form.recipes.length > 0
+        ? Math.max(...form.recipes.map((r) => r.order)) + 1
+        : 1;
+    setForm((f) => ({
+      ...f,
+      recipes: [...f.recipes, { type: "Breakfast", order: nextOrder, recipeId: "" }],
+    }));
+  }
+
+  function removeRecipeEntry(idx: number) {
+    setForm((f) => ({ ...f, recipes: f.recipes.filter((_, i) => i !== idx) }));
+  }
+
+  function updateRecipeEntry<K extends keyof RecipeFormEntry>(
+    idx: number,
+    key: K,
+    value: RecipeFormEntry[K]
+  ) {
+    setForm((f) => ({
+      ...f,
+      recipes: f.recipes.map((r, i) => (i === idx ? { ...r, [key]: value } : r)),
+    }));
   }
 
   function openCreate() {
@@ -121,6 +156,7 @@ export default function MealPrepPlansManager() {
     setEditItem(null);
     setFormError("");
     setModal("create");
+    loadRecipes();
   }
 
   function openEdit(item: MealPrepPlan) {
@@ -137,10 +173,16 @@ export default function MealPrepPlansManager() {
       ingredientNames: (item.ingredientNames ?? []).join(", "),
       isCurrentWeek: item.isCurrentWeek ?? false,
       isActive: item.isActive ?? true,
+      recipes: (item.recipes ?? []).map((r) => ({
+        type: r.type,
+        order: r.order,
+        recipeId: r.recipeId,
+      })),
     });
     setEditItem(item);
     setFormError("");
     setModal("edit");
+    loadRecipes();
   }
 
   function closeModal() {
@@ -510,6 +552,80 @@ export default function MealPrepPlansManager() {
                   </button>
                   <span className="text-sm text-white/70">Active</span>
                 </div>
+              </div>
+
+              {/* Recipes */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/40">
+                    Recipes
+                  </p>
+                  <button
+                    type="button"
+                    onClick={addRecipeEntry}
+                    disabled={loadingRecipes}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 text-white/60 hover:text-white hover:border-white/35 disabled:opacity-40 transition"
+                  >
+                    + Add Recipe
+                  </button>
+                </div>
+                {loadingRecipes && (
+                  <p className="text-xs text-white/30 py-1">Loading recipes…</p>
+                )}
+                {!loadingRecipes && form.recipes.length === 0 && (
+                  <p className="text-xs text-white/25 py-2">No recipes added yet.</p>
+                )}
+                {!loadingRecipes && form.recipes.length > 0 && (
+                  <div className="space-y-2">
+                    {form.recipes.map((entry, idx) => {
+                      const entryKey = `${entry.recipeId}-${idx}`;
+                      return (
+                        <div
+                          key={entryKey}
+                          className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10"
+                        >
+                          <select
+                            value={entry.type}
+                            onChange={(e) =>
+                              updateRecipeEntry(idx, "type", e.target.value as RecipeFormEntry["type"])
+                            }
+                            className="rounded-lg bg-neutral-800 border border-white/10 px-2 py-1.5 text-xs text-white focus:border-white/30 focus:outline-none"
+                          >
+                            {(["Breakfast", "Lunch", "Dinner", "Snack"] as const).map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            value={entry.order}
+                            title="Order"
+                            onChange={(e) =>
+                              updateRecipeEntry(idx, "order", Number(e.target.value) || 0)
+                            }
+                            className="w-14 rounded-lg bg-neutral-800 border border-white/10 px-2 py-1.5 text-xs text-white text-center focus:border-white/30 focus:outline-none"
+                          />
+                          <select
+                            value={entry.recipeId}
+                            onChange={(e) => updateRecipeEntry(idx, "recipeId", e.target.value)}
+                            className="rounded-lg bg-neutral-800 border border-white/10 px-2 py-1.5 text-xs text-white focus:border-white/30 focus:outline-none w-full"
+                          >
+                            <option value="">— Select recipe —</option>
+                            {availableRecipes.map((r) => (
+                              <option key={r._id} value={r._id}>{r.title}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => removeRecipeEntry(idx)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition text-lg leading-none"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {formError && (

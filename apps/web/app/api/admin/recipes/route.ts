@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { getAdminPayload, adminUnauthorized } from "@/lib/adminAuth";
+import { computeNutritionTotals } from "@/lib/computeNutrition";
 
 export async function GET() {
   if (!(await getAdminPayload())) return adminUnauthorized();
@@ -31,6 +32,10 @@ export async function POST(req: NextRequest) {
     if (existing)
       return NextResponse.json({ error: "Slug already in use." }, { status: 409 });
 
+    const ingredients = Array.isArray(body.ingredients) ? body.ingredients : [];
+    const servings = Number(body.servings) || 1;
+    const nutritionTotals = await computeNutritionTotals(db, ingredients, servings);
+
     const now = new Date();
     const doc = {
       title: body.title.trim(),
@@ -38,11 +43,12 @@ export async function POST(req: NextRequest) {
       description: body.description || null,
       imageUrl: body.imageUrl || null,
       tags: Array.isArray(body.tags) ? body.tags : [],
-      servings: Number(body.servings) || 1,
+      servings,
       servingUnit: body.servingUnit || null,
       status: body.status || "draft",
-      ingredients: [],
-      instructions: [],
+      ingredients,
+      instructions: Array.isArray(body.instructions) ? body.instructions : [],
+      nutritionTotals,
       createdAt: now,
       updatedAt: now,
     };

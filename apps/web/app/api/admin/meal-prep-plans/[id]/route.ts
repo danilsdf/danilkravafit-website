@@ -11,13 +11,18 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const { id } = await params;
     const body = await req.json();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id, createdAt, recipes, ...update } = body;
+    const { _id, createdAt, recipes: rawRecipes, ...fields } = body;
+    const recipes = Array.isArray(rawRecipes)
+      ? (rawRecipes as Array<{ recipeId: string; type: string; order: number }>).map(
+          ({ recipeId, type, order }) => ({ recipeId, type, order })
+        )
+      : [];
     const db = await getDb();
     await db
       .collection("MealPrepPlans")
       .updateOne(
         { _id: new ObjectId(id) },
-        { $set: { ...update, updatedAt: new Date() } }
+        { $set: { ...fields, recipes, updatedAt: new Date() } }
       );
     return NextResponse.json({ success: true });
   } catch (err) {

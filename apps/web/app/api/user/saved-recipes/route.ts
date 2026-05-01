@@ -39,6 +39,7 @@ export async function GET() {
           _id: 0,
           savedAt: 1,
           targetCalories: 1,
+          targetMacroSplit: 1,
           "recipe.title": 1,
           "recipe.slug": 1,
           "recipe.imageUrl": 1,

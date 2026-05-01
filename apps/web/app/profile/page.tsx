@@ -26,6 +26,7 @@ type SavedPlanItem = {
 type SavedRecipeItem = {
   savedAt: string;
   targetCalories?: number | null;
+  targetMacroSplit?: { protein: number; fat: number; carbs: number } | null;
   recipe: {
     title: string;
     slug: string;

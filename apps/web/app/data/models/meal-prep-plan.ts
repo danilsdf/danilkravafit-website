@@ -18,7 +18,7 @@ export type MealPlanRecipeEntry = {
 };
 
 export type MealPrepPlan = {
-  _id?: string;
+  _id: string;
   id: string;
 
   title: string;
@@ -33,5 +33,6 @@ export type MealPrepPlan = {
   ingredientNames: string[]; // e.g. ["Chicken Breast", "Ground Turkey", ...]
   imageUrl?: string | null;
   isCurrentWeek?: boolean;
+  isActive?: boolean;
   recipes?: MealPlanRecipeEntry[];
 };

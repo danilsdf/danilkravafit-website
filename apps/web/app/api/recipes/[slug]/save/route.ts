@@ -28,7 +28,7 @@ export async function GET(
     .collection("SavedRecipes")
     .findOne({ userId: user.userId, recipeSlug: slug });
 
-  return NextResponse.json({ saved: !!doc, targetCalories: doc?.targetCalories ?? null });
+  return NextResponse.json({ saved: !!doc, targetCalories: doc?.targetCalories ?? null, targetMacroSplit: doc?.targetMacroSplit ?? null });
 }
 
 // POST /api/recipes/[slug]/save — save recipe
@@ -43,18 +43,25 @@ export async function POST(
   const body = await req.json().catch(() => ({}));
   const targetCalories: number | null =
     typeof body.targetCalories === "number" ? body.targetCalories : null;
+  const targetMacroSplit: { protein: number; fat: number; carbs: number } | null =
+    body.targetMacroSplit &&
+    typeof body.targetMacroSplit.protein === "number" &&
+    typeof body.targetMacroSplit.fat === "number" &&
+    typeof body.targetMacroSplit.carbs === "number"
+      ? body.targetMacroSplit
+      : null;
 
   const db = await getDb();
   await db.collection("SavedRecipes").updateOne(
     { userId: user.userId, recipeSlug: slug },
     {
-      $set: { targetCalories, savedAt: new Date() },
+      $set: { targetCalories, targetMacroSplit, savedAt: new Date() },
       $setOnInsert: { userId: user.userId, recipeSlug: slug },
     },
     { upsert: true }
   );
 
-  return NextResponse.json({ saved: true, targetCalories });
+  return NextResponse.json({ saved: true, targetCalories, targetMacroSplit });
 }
 
 // DELETE /api/recipes/[slug]/save — unsave recipe
